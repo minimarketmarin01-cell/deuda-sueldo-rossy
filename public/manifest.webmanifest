@@ -1,7 +1,7 @@
 {
-  "name": "Deuda de sueldo — Rossy",
-  "short_name": "Deuda Rossy",
-  "description": "Control de deuda de sueldo, Minimarket Marín 376",
+  "name": "Plan de pago a Rossy",
+  "short_name": "Plan pago Rossy",
+  "description": "Plan de pago del sueldo de Rossy, Minimarket Marín 376",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
