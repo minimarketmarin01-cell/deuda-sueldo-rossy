@@ -1,0 +1,15 @@
+{
+  "name": "Deuda de sueldo — Rossy",
+  "short_name": "Deuda Rossy",
+  "description": "Control de deuda de sueldo, Minimarket Marín 376",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F6F4",
+  "theme_color": "#0E6E58",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
