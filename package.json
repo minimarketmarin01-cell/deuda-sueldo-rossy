@@ -1,0 +1,13 @@
+{
+  "name": "deuda-sueldo-rossy",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply deuda_sueldo_rossy --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
