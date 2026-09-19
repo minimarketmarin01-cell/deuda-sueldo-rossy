@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Resumen simple — Deuda Rossy</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#D03B3B">
+<style>
+:root{
+  --page:#F9F9F7; --surface:#FFFFFF; --ink:#0B0B0B; --ink-2:#3E3D3A; --muted:#6B6A65; --border:#E1E0D9;
+  --blue:#2A78D6; --blue-soft:#E7F0FC;
+  --orange:#EB6834; --orange-soft:#FDEAE1;
+  --red:#D03B3B; --red-soft:#FBE7E7;
+  --shadow: 0 1px 2px rgba(11,11,11,.05), 0 8px 24px rgba(11,11,11,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --page:#0D0D0D; --surface:#1A1A19; --ink:#FFFFFF; --ink-2:#E4E3DD; --muted:#ABA9A2; --border:#2C2C2A;
+    --blue:#3987E5; --blue-soft:#17263A;
+    --orange:#D95926; --orange-soft:#3A2418;
+    --red:#E66767; --red-soft:#3A1D1D;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.45);
+  }
+}
+*{box-sizing:border-box;}
+body{background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;padding:20px 20px 64px;font-size:19px;line-height:1.55;}
+.wrap{max-width:760px;margin:0 auto;}
+.mono{font-variant-numeric:tabular-nums;}
+h1{font-size:clamp(28px,7vw,40px);line-height:1.15;margin:0;font-weight:800;}
+h2{font-size:clamp(22px,5vw,27px);margin:0 0 6px;font-weight:800;}
+.back{display:inline-block;font-size:16px;font-weight:600;color:var(--blue);text-decoration:none;margin-bottom:16px;}
+.eyebrow{display:inline-block;font-size:15px;font-weight:700;color:var(--blue);background:var(--blue-soft);padding:6px 14px;border-radius:999px;margin-bottom:14px;}
+.lede{font-size:21px;color:var(--ink-2);margin-top:14px;max-width:60ch;}
+section{margin-top:44px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:26px 22px;box-shadow:var(--shadow);}
+.timeline{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:var(--shadow);}
+.timeline .dot{width:16px;height:16px;border-radius:50%;background:var(--blue);flex:none;}
+.timeline b{font-size:22px;}
+.hero{background:var(--red-soft);border:2px solid var(--red);border-radius:20px;padding:30px 24px;text-align:center;box-shadow:var(--shadow);}
+.hero .label{font-size:18px;font-weight:700;color:var(--ink-2);}
+.hero .value{font-size:clamp(38px,11vw,58px);font-weight:800;color:var(--red);margin-top:6px;}
+.hero .sub{font-size:16px;color:var(--muted);margin-top:8px;}
+.legend{display:flex;gap:22px;flex-wrap:wrap;margin:16px 0 6px;font-size:17px;font-weight:600;}
+.legend span{display:inline-flex;align-items:center;gap:8px;}
+.swatch{width:16px;height:16px;border-radius:4px;flex:none;}
+.chart-wrap{overflow-x:auto;}
+.bar-row{display:flex;align-items:flex-end;gap:18px;margin-top:22px;min-width:560px;}
+.bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.bars{display:flex;align-items:flex-end;gap:6px;height:220px;width:100%;justify-content:center;}
+.bar{width:38px;border-radius:6px 6px 3px 3px;position:relative;}
+.bar .val{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:14px;font-weight:700;white-space:nowrap;color:var(--ink);}
+.bar-year{font-size:17px;font-weight:800;margin-top:2px;}
+.debt-bars{display:flex;align-items:flex-end;gap:18px;margin-top:22px;min-width:560px;height:200px;}
+.debt-bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+.debt-fill{width:56px;background:var(--red);border-radius:8px 8px 3px 3px;position:relative;}
+.debt-fill .val{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:15px;font-weight:800;white-space:nowrap;}
+.debt-year{font-size:17px;font-weight:800;margin-top:10px;}
+.note{font-size:16px;color:var(--muted);margin-top:14px;line-height:1.6;}
+.plan-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:20px;}
+@media (min-width:640px){.plan-grid{grid-template-columns:1fr 1fr 1fr;}}
+.plan-card{background:var(--surface);border:2px solid var(--border);border-radius:16px;padding:22px 18px;text-align:center;box-shadow:var(--shadow);}
+.plan-card.reco{border-color:var(--blue);background:var(--blue-soft);}
+.plan-card .tag{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);}
+.plan-card .months{font-size:34px;font-weight:800;margin:8px 0 2px;}
+.plan-card .months small{font-size:16px;font-weight:600;color:var(--muted);}
+.plan-card .cuota{font-size:16px;color:var(--ink-2);margin-top:10px;line-height:1.5;}
+.plan-card .cuota b{color:var(--ink);font-size:19px;}
+footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--border);}
+footer p{font-size:15px;color:var(--muted);line-height:1.7;}
+.loading{padding:60px 0;text-align:center;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">Cargando…</div></div>
+
+<script>
+const fmt = n => '$' + Math.round(Math.abs(n)).toLocaleString('es-CL');
+
+function monthStart(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function daysInMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); }
+function rateForMonth(tramos, ms){
+  for(const t of tramos){
+    if(ms >= new Date(t.from_date) && ms <= new Date(t.to_date)) return t.monto;
+  }
+  if(tramos.length && ms < new Date(tramos[0].from_date)) return tramos[0].monto;
+  return tramos.length ? tramos[tramos.length-1].monto : 0;
+}
+
+async function load(){
+  const res = await fetch('/api/state');
+  if(!res.ok) throw new Error('No se pudo cargar /api/state');
+  return res.json();
+}
+
+function computePorAnio(state){
+  const startVal = state.settings.fecha_inicio || '2023-05-01';
+  const start = new Date(startVal+'T00:00:00');
+  const cutoff = new Date();
+  const tramos = state.tramos;
+
+  const devengadoPorAnio = {};
+  let cursor = monthStart(start);
+  const cutoffMonth = monthStart(cutoff);
+  while(cursor <= cutoffMonth){
+    const rate = rateForMonth(tramos, cursor);
+    let val;
+    if(cursor.getTime() === cutoffMonth.getTime()){
+      const dim = daysInMonth(cursor);
+      val = rate * (Math.min(cutoff.getDate(), dim) / dim);
+    } else {
+      val = rate;
+    }
+    const y = cursor.getFullYear();
+    devengadoPorAnio[y] = (devengadoPorAnio[y]||0) + val;
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+  }
+
+  const checkedIds = new Set(state.categories.filter(c=>c.checked).map(c=>c.id));
+  const pagadoPorAnio = {};
+  state.payments.forEach(p=>{
+    if(!checkedIds.has(p.category_id)) return;
+    const y = new Date(p.fecha+'T00:00:00').getFullYear();
+    pagadoPorAnio[y] = (pagadoPorAnio[y]||0) + p.monto;
+  });
+
+  const years = Array.from(new Set([...Object.keys(devengadoPorAnio), ...Object.keys(pagadoPorAnio)])).map(Number).sort();
+  const rows = years.map(y=>({
+    year: y,
+    correspondia: devengadoPorAnio[y]||0,
+    pagado: pagadoPorAnio[y]||0,
+  }));
+
+  let acumDevengado = 0, acumPagado = 0;
+  const cumRows = rows.map(r=>{
+    acumDevengado += r.correspondia;
+    acumPagado += r.pagado;
+    return { year: r.year, deuda: acumDevengado - acumPagado };
+  });
+
+  return { rows, cumRows, totalDeuda: acumDevengado - acumPagado, cutoff };
+}
+
+function render(state){
+  const { rows, cumRows, totalDeuda, cutoff } = computePorAnio(state);
+  const app = document.getElementById('app');
+  const currentYear = cutoff.getFullYear();
+  const startVal = state.settings.fecha_inicio || '2023-05-01';
+  const [sy, sm] = startVal.split('-');
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const startLabel = `${meses[parseInt(sm,10)-1]} de ${sy}`;
+  const cutoffLabel = cutoff.toLocaleDateString('es-CL', {day:'2-digit', month:'long', year:'numeric'});
+
+  const sueldoActual = rateForMonth(state.tramos, monthStart(cutoff));
+
+  app.innerHTML = `
+    <a class="back" href="/">← Volver a la calculadora</a>
+    <div class="eyebrow">Minimarket Marín 376</div>
+    <h1>Cuánto se le debe a Rossy, explicado simple</h1>
+    <p class="lede">Este resumen muestra, año por año, cuánto correspondía pagarle a Rossy y cuánto se le pagó realmente. Cifras actualizadas al ${cutoffLabel}.</p>
+
+    <section>
+      <div class="timeline">
+        <div class="dot"></div>
+        <div>Rossy empezó a trabajar en <b>${startLabel}</b>. Desde ahí se cuenta todo lo que se le debía pagar.</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="hero">
+        <div class="label">Hoy, en total, se le debe</div>
+        <div class="value mono">${totalDeuda < 0 ? '$0' : fmt(totalDeuda)}</div>
+        <div class="sub">${totalDeuda < 0
+          ? 'Se pagó ' + fmt(Math.abs(totalDeuda)) + ' de más.'
+          : 'Es la diferencia entre todo lo que correspondía pagarle desde ' + startLabel + ', y todo lo que efectivamente se le ha pagado.'}</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Año por año: lo que correspondía vs. lo que se pagó</h2>
+      <p class="note" style="margin-top:4px;">Cada año se compara con el sueldo mínimo legal de esa fecha (lo que correspondía por ley) contra lo que realmente se le transfirió o entregó en efectivo, según lo marcado en la calculadora.</p>
+      <div class="card chart-wrap">
+        <div class="legend">
+          <span><span class="swatch" style="background:var(--blue)"></span>Correspondía pagar</span>
+          <span><span class="swatch" style="background:var(--orange)"></span>Se pagó</span>
+        </div>
+        <div class="bar-row" id="yearly-chart"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Cómo fue creciendo la deuda</h2>
+      <p class="note" style="margin-top:4px;">Esto es lo que faltaba pagar, acumulado, al final de cada año.</p>
+      <div class="card chart-wrap">
+        <div class="debt-bars" id="debt-chart"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Plan de pago sugerido</h2>
+      <p class="note" style="margin-top:4px;">Para que la deuda no siga creciendo, hay que pagar como mínimo el sueldo del mes en curso (${fmt(sueldoActual)}) más un abono extra. Estas son tres velocidades posibles para saldar ${fmt(totalDeuda)}:</p>
+      <div class="plan-grid" id="plan-grid"></div>
+      <p class="note">Cada cuota mensual = sueldo del mes (${fmt(sueldoActual)}) + el abono extra para ir bajando lo atrasado. Se puede empezar con la opción tranquila e ir subiendo el abono cuando el negocio lo permita.</p>
+    </section>
+
+    <footer>
+      <p><strong>Notas:</strong> Estas cifras usan el sueldo mínimo legal de cada período como base, no incluyen gratificación legal, cotizaciones previsionales ni indemnización. Es un resumen para conversar y ordenar el pago, no un finiquito legal. Para algo formal, conviene revisarlo con la Dirección del Trabajo o un abogado laboral.</p>
+    </footer>
+  `;
+
+  const maxY = Math.max(...rows.map(r=>Math.max(r.correspondia, r.pagado)), 1);
+  const chartH = 220;
+  const yc = document.getElementById('yearly-chart');
+  rows.forEach(d=>{
+    const isPartial = d.year === currentYear;
+    const label = isPartial ? d.year + '*' : String(d.year);
+    const hC = Math.max(6, (d.correspondia/maxY)*chartH);
+    const hP = Math.max(6, (d.pagado/maxY)*chartH);
+    const group = document.createElement('div');
+    group.className = 'bar-group';
+    group.innerHTML = `
+      <div class="bars">
+        <div class="bar" style="height:${hC}px;background:var(--blue);"><div class="val mono">${fmt(d.correspondia)}</div></div>
+        <div class="bar" style="height:${hP}px;background:var(--orange);"><div class="val mono">${fmt(d.pagado)}</div></div>
+      </div>
+      <div class="bar-year">${label}</div>
+    `;
+    yc.appendChild(group);
+  });
+
+  const maxD = Math.max(...cumRows.map(r=>r.deuda), 1);
+  const debtH = 200;
+  const dc = document.getElementById('debt-chart');
+  cumRows.forEach((d,i)=>{
+    const label = (i === cumRows.length-1) ? 'Hoy ('+d.year+')' : 'Fin '+d.year;
+    const val = Math.max(0, d.deuda);
+    const h = Math.max(8, (val/maxD)*debtH);
+    const col = document.createElement('div');
+    col.className = 'debt-bar';
+    col.innerHTML = `
+      <div class="debt-fill" style="height:${h}px;"><div class="val mono">${fmt(val)}</div></div>
+      <div class="debt-year">${label}</div>
+    `;
+    dc.appendChild(col);
+  });
+
+  const tiers = [
+    {tag:'Tranquila', extra:200000},
+    {tag:'Recomendada', extra:400000, reco:true},
+    {tag:'Rápida', extra:700000},
+  ];
+  const pg = document.getElementById('plan-grid');
+  const deudaPositiva = Math.max(totalDeuda, 0);
+  tiers.forEach(t=>{
+    const months = deudaPositiva === 0 ? 0 : Math.ceil(deudaPositiva / t.extra);
+    const years = Math.floor(months/12);
+    const restMonths = months % 12;
+    const cuota = sueldoActual + t.extra;
+    const durText = years > 0
+      ? `≈ ${years} año${years===1?'':'s'}${restMonths ? ' y '+restMonths+' mes'+(restMonths===1?'':'es') : ''}`
+      : `≈ ${months} mes${months===1?'':'es'}`;
+    const card = document.createElement('div');
+    card.className = 'plan-card' + (t.reco ? ' reco' : '');
+    card.innerHTML = `
+      <div class="tag">${t.tag}</div>
+      <div class="months">${months} <small>meses</small></div>
+      <div class="cuota">${durText}<br>Cuota mensual: <b class="mono">${fmt(cuota)}</b></div>
+    `;
+    pg.appendChild(card);
+  });
+}
+
+(async function init(){
+  try{
+    const state = await load();
+    render(state);
+  }catch(err){
+    document.getElementById('app').innerHTML = `<div class="loading">Error cargando datos: ${err.message}</div>`;
+  }
+})();
+</script>
+</body>
+</html>
