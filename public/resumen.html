@@ -244,12 +244,12 @@ function render(state){
     <section>
       <h2>Sueldo al día, deuda aparte</h2>
       <div class="card">
-        <p style="margin:0 0 12px;">Desde <b>${meses[deudaVieja.continuousStart.getMonth()]} de ${deudaVieja.continuousStart.getFullYear()}</b> se le paga el sueldo completo cada mes — ningún mes desde entonces quedó corto. Lo que queda es pura deuda de antes:</p>
+        <p style="margin:0 0 12px;">Desde <b>${meses[deudaVieja.continuousStart.getMonth()]} de ${deudaVieja.continuousStart.getFullYear()}</b> se le paga el sueldo completo cada mes, sin atrasos. Lo que queda es solo la deuda de antes:</p>
         <div class="legend" style="margin:0;">
-          <span>Deuda vieja (congelada a fin de ${meses[(deudaVieja.continuousStart.getMonth()+11)%12]} ${deudaVieja.continuousStart.getMonth()===0 ? deudaVieja.continuousStart.getFullYear()-1 : deudaVieja.continuousStart.getFullYear()}): <b class="mono">${fmt(deudaVieja.deudaViejaOriginal)}</b></span>
+          <span>Deuda de antes (hasta ${meses[(deudaVieja.continuousStart.getMonth()+11)%12]} ${deudaVieja.continuousStart.getMonth()===0 ? deudaVieja.continuousStart.getFullYear()-1 : deudaVieja.continuousStart.getFullYear()}): <b class="mono">${fmt(deudaVieja.deudaViejaOriginal)}</b></span>
         </div>
         <div class="legend" style="margin-top:8px;">
-          <span>Ya bajó, con los excedentes pagados desde entonces, a: <b class="mono">${fmt(Math.max(totalDeuda,0))}</b></span>
+          <span>Lo que queda por pagar hoy: <b class="mono">${fmt(Math.max(totalDeuda,0))}</b></span>
         </div>
       </div>
     </section>
