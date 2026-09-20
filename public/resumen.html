@@ -68,6 +68,14 @@ section{margin-top:44px;}
 .plan-card .months small{font-size:16px;font-weight:600;color:var(--muted);}
 .plan-card .cuota{font-size:16px;color:var(--ink-2);margin-top:10px;line-height:1.5;}
 .plan-card .cuota b{color:var(--ink);font-size:19px;}
+.sim-grid{display:flex;gap:10px;margin:14px 0;text-align:left;}
+.sim-field{flex:1;display:flex;flex-direction:column;gap:4px;}
+.sim-field label{font-size:12px;color:var(--muted);font-weight:600;}
+.sim-field input{font-size:16px;padding:8px 9px;border:1px solid var(--border);border-radius:8px;background:var(--page);color:var(--ink);width:100%;box-sizing:border-box;}
+.amount-wrap{position:relative;}
+.amount-wrap .amount-prefix{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;}
+.amount-wrap input{padding-left:20px;text-align:right;}
+.sim-label{font-size:14px;font-weight:700;color:var(--ink-2);margin-top:6px;}
 footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--border);}
 footer p{font-size:15px;color:var(--muted);line-height:1.7;}
 .loading{padding:60px 0;text-align:center;color:var(--muted);}
@@ -196,27 +204,9 @@ function computeDeudaVieja(state){
   };
 }
 
-// Promedio de pagos "casi diarios" de $20.000 por mes, usando solo meses
-// completos (excluye el primer y el ultimo mes, que suelen venir parciales).
-const DIARIO_CATS = ['cuaderno_diario','cuaderno_cierres_abril_2026','app_gastos_sep2026'];
-function computeRitmoDiario(state){
-  const porMes = {};
-  state.payments.forEach(p=>{
-    if(!DIARIO_CATS.includes(p.category_id) || p.monto !== 20000) return;
-    const key = p.fecha.slice(0,7);
-    porMes[key] = (porMes[key]||0) + 1;
-  });
-  const keys = Object.keys(porMes).sort();
-  if(keys.length < 3) return keys.length ? porMes[keys[0]] : 20;
-  const meses = keys.slice(1, -1); // saca primero y ultimo (parciales)
-  const total = meses.reduce((a,k)=>a+porMes[k], 0);
-  return meses.length ? Math.round(total / meses.length) : 20;
-}
-
 function render(state){
   const { rows, cumRows, totalDeuda, cutoff } = computePorAnio(state);
   const deudaVieja = computeDeudaVieja(state);
-  const ritmoDiario = computeRitmoDiario(state);
   const app = document.getElementById('app');
   const currentYear = cutoff.getFullYear();
   const startVal = state.settings.fecha_inicio || '2023-05-01';
@@ -333,15 +323,14 @@ function render(state){
     dc.appendChild(col);
   });
 
-  const extraRecomendado = 30000 * ritmoDiario;
   const tiers = [
     {tag:'Tranquila', extra:200000},
-    {tag:'Recomendado', extra:extraRecomendado, reco:true, sub:`$30.000 × ~${ritmoDiario} pagos/mes (tu ritmo real)`},
     {tag:'Rápida', extra:700000},
   ];
   const pg = document.getElementById('plan-grid');
   const deudaPositiva = Math.max(totalDeuda, 0);
-  tiers.forEach(t=>{
+
+  function buildTierCard(t){
     const months = deudaPositiva === 0 ? 0 : Math.ceil(deudaPositiva / t.extra);
     const years = Math.floor(months/12);
     const restMonths = months % 12;
@@ -354,17 +343,61 @@ function render(state){
       ? `≈ ${years} año${years===1?'':'s'}${restMonths ? ' y '+restMonths+' mes'+(restMonths===1?'':'es') : ''}`
       : `≈ ${months} mes${months===1?'':'es'}`;
     const card = document.createElement('div');
-    card.className = 'plan-card' + (t.reco ? ' reco' : '');
+    card.className = 'plan-card';
     card.innerHTML = `
       <div class="tag">${t.tag}</div>
       <div class="months">${months} <small>meses</small></div>
       <div class="cuota">${durText}<br>Cuota mensual: <b class="mono">${fmt(cuota)}</b>
       ${months > 1 && !esExacto ? `<br><span style="font-size:13px;">Último mes: <b class="mono">${fmt(cuotaUltimoMes)}</b> (el abono baja a ${fmt(extraUltimoMes)}, ya no se debe más)</span>` : ''}
-      ${t.sub ? `<br><span style="font-size:12.5px;color:var(--muted);">${t.sub}</span>` : ''}
       </div>
     `;
-    pg.appendChild(card);
-  });
+    return card;
+  }
+
+  // Tarjeta "Recomendado": simulador editable dias x monto diario.
+  function buildSimCard(){
+    const card = document.createElement('div');
+    card.className = 'plan-card reco';
+    card.innerHTML = `
+      <div class="tag">Recomendado</div>
+      <div class="sim-grid">
+        <div class="sim-field">
+          <label for="sim-dias">Días</label>
+          <input type="number" id="sim-dias" inputmode="numeric" min="1" value="30">
+        </div>
+        <div class="sim-field">
+          <label for="sim-monto">Monto diario</label>
+          <div class="amount-wrap">
+            <span class="amount-prefix">$</span>
+            <input type="text" id="sim-monto" inputmode="numeric" value="30.000">
+          </div>
+        </div>
+      </div>
+      <div class="sim-label">Deuda estimada</div>
+      <div class="months mono" id="sim-resultado" style="font-size:32px;">$0</div>
+    `;
+    const diasInput = card.querySelector('#sim-dias');
+    const montoInput = card.querySelector('#sim-monto');
+    const resultadoEl = card.querySelector('#sim-resultado');
+
+    function recompute(){
+      const dias = Number(diasInput.value) || 0;
+      const monto = Number(montoInput.value.replace(/\D/g,'')) || 0;
+      resultadoEl.textContent = fmt(dias * monto);
+    }
+    montoInput.addEventListener('input', ()=>{
+      const digits = montoInput.value.replace(/\D/g,'');
+      montoInput.value = digits ? Number(digits).toLocaleString('es-CL') : '';
+      recompute();
+    });
+    diasInput.addEventListener('input', recompute);
+    recompute();
+    return card;
+  }
+
+  pg.appendChild(buildTierCard(tiers[0]));
+  pg.appendChild(buildSimCard());
+  pg.appendChild(buildTierCard(tiers[1]));
 }
 
 (async function init(){
