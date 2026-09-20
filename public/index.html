@@ -114,8 +114,12 @@ footer a{color:var(--accent-strong);}
 .amount-wrap{position:relative;}
 .amount-wrap .amount-prefix{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:14px;}
 .amount-wrap input{padding-left:20px;text-align:right;width:100%;}
-button.primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-family:'Public Sans',sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;}
+button.primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-family:'Public Sans',sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
 button.primary:hover{background:var(--accent-strong);}
+button.primary:disabled{opacity:.75;cursor:default;}
+.spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;animation:spin .7s linear infinite;flex:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion: reduce){.spinner{animation-duration:1.6s;}}
 .status-msg{font-size:12.5px;margin-top:8px;min-height:16px;}
 .status-msg.ok{color:var(--accent-strong);}
 .status-msg.err{color:var(--debt);}
@@ -325,7 +329,7 @@ function render(){
             <label for="add-nota">Nota (opcional)</label>
             <input type="text" id="add-nota" placeholder="ej: transferencia Santander">
           </div>
-          <button class="primary" type="submit">Agregar</button>
+          <button class="primary" type="submit" id="add-submit-btn"><span id="add-submit-label">Agregar</span></button>
         </form>
         <div class="status-msg" id="add-status"></div>
       </div>
@@ -531,6 +535,22 @@ function wireEvents(){
     if(isNew) newCatName.focus();
   });
 
+  const submitBtn = document.getElementById('add-submit-btn');
+  const submitLabel = document.getElementById('add-submit-label');
+
+  function setSubmitLoading(loading){
+    submitBtn.disabled = loading;
+    submitLabel.textContent = loading ? 'Guardando…' : 'Agregar';
+    const existingSpinner = submitBtn.querySelector('.spinner');
+    if(loading && !existingSpinner){
+      const sp = document.createElement('span');
+      sp.className = 'spinner';
+      submitBtn.appendChild(sp);
+    } else if(!loading && existingSpinner){
+      existingSpinner.remove();
+    }
+  }
+
   addForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const fechas = Array.from(selectedDates).sort();
@@ -539,6 +559,7 @@ function wireEvents(){
     const nota = document.getElementById('add-nota').value.trim();
     if(fechas.length === 0){ setStatus(addStatus, 'Toca al menos un dia en el calendario', false); return; }
     if(!monto){ setStatus(addStatus, 'Pon un monto', false); return; }
+    setSubmitLoading(true);
     try{
       if(category_id === '__new__'){
         const name = newCatName.value.trim();
@@ -558,6 +579,8 @@ function wireEvents(){
       render();
     }catch(err){
       setStatus(addStatus, 'Error: '+err.message, false);
+    }finally{
+      setSubmitLoading(false);
     }
   });
 }
