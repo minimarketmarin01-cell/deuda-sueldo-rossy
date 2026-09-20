@@ -75,6 +75,9 @@ section{margin-top:44px;}
 .amount-wrap .amount-prefix{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;}
 .amount-wrap input{padding-left:20px;text-align:right;}
 .sim-label{font-size:14px;font-weight:700;color:var(--ink-2);margin-top:6px;}
+.plan-tiempo-grid{display:flex;gap:10px;margin:6px 0 0;}
+.plan-tiempo-col{flex:1;}
+.plan-tiempo-sub{font-size:15px;color:var(--ink-2);margin-top:2px;}
 footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--border);}
 footer p{font-size:15px;color:var(--muted);line-height:1.7;}
 .loading{padding:60px 0;text-align:center;color:var(--muted);}
@@ -274,7 +277,7 @@ function render(state){
 
     <section>
       <h2>Plan de pago</h2>
-      <p class="note" style="margin-top:4px;">Esto es aparte del sueldo del mes, que se sigue pagando al día. Ingresa cuánto se le paga por día y cuántos días al mes, para ver el pago mensual y el tiempo aproximado para terminar de pagar los ${fmt(Math.max(totalDeuda,0))} de deuda.</p>
+      <p class="note" style="margin-top:4px;">Aparte del sueldo del mes, que ya se paga al día, se le deben ${fmt(Math.max(totalDeuda,0))}. Cambia los números para ver cuánto pagaría cada mes y cuándo terminaría de pagarse.</p>
       <div class="plan-grid" id="plan-grid"></div>
     </section>
 
@@ -344,13 +347,30 @@ function render(state){
       <div class="sim-label">Pago aproximado al mes</div>
       <div class="months mono" id="plan-mensual">$0</div>
       <div class="sim-label" style="margin-top:14px;">Terminaría de pagar en aproximadamente</div>
-      <div class="months mono" id="plan-tiempo" style="font-size:24px;">-</div>
+      <div class="plan-tiempo-grid" id="plan-tiempo-grid">
+        <div class="plan-tiempo-col" id="plan-meses-col">
+          <div class="months mono" id="plan-meses-num" style="font-size:26px;">0 <small>meses</small></div>
+          <div class="plan-tiempo-sub mono" id="plan-meses-monto">$0</div>
+        </div>
+        <div class="plan-tiempo-col" id="plan-dias-col">
+          <div class="months mono" id="plan-dias-num" style="font-size:26px;">0 <small>días</small></div>
+          <div class="plan-tiempo-sub mono" id="plan-dias-monto">$0</div>
+        </div>
+      </div>
+      <div class="months mono" id="plan-tiempo-msg" style="font-size:24px;display:none;">-</div>
       <p class="cuota" id="plan-frase" style="margin-top:14px;"></p>
     `;
     const montoInput = card.querySelector('#plan-monto');
     const diasInput = card.querySelector('#plan-dias');
     const mensualEl = card.querySelector('#plan-mensual');
-    const tiempoEl = card.querySelector('#plan-tiempo');
+    const tiempoGridEl = card.querySelector('#plan-tiempo-grid');
+    const mesesColEl = card.querySelector('#plan-meses-col');
+    const mesesNumEl = card.querySelector('#plan-meses-num');
+    const mesesMontoEl = card.querySelector('#plan-meses-monto');
+    const diasColEl = card.querySelector('#plan-dias-col');
+    const diasNumEl = card.querySelector('#plan-dias-num');
+    const diasMontoEl = card.querySelector('#plan-dias-monto');
+    const tiempoMsgEl = card.querySelector('#plan-tiempo-msg');
     const fraseEl = card.querySelector('#plan-frase');
 
     function recompute(){
@@ -359,19 +379,24 @@ function render(state){
       const pagoMensual = pagoDiario * diasMes;
       mensualEl.textContent = fmt(pagoMensual);
 
-      if (deudaTotal <= 0){
-        tiempoEl.textContent = 'Ya está al día';
-      } else if (pagoDiario <= 0 || diasMes <= 0){
-        tiempoEl.textContent = '-';
+      if (deudaTotal <= 0 || pagoDiario <= 0 || diasMes <= 0){
+        tiempoGridEl.style.display = 'none';
+        tiempoMsgEl.style.display = '';
+        tiempoMsgEl.textContent = deudaTotal <= 0 ? 'Ya está al día' : '-';
       } else {
         const diasTotales = deudaTotal / pagoDiario;
         let meses = Math.floor(diasTotales / diasMes);
         let dias = Math.round(diasTotales - meses * diasMes);
         if (dias >= diasMes){ meses += 1; dias = 0; }
-        const partes = [];
-        if (meses > 0) partes.push(meses + (meses === 1 ? ' mes' : ' meses'));
-        if (dias > 0 || meses === 0) partes.push(dias + (dias === 1 ? ' día' : ' días'));
-        tiempoEl.textContent = partes.join(' y ');
+
+        tiempoMsgEl.style.display = 'none';
+        tiempoGridEl.style.display = 'flex';
+        mesesColEl.style.display = meses > 0 ? '' : 'none';
+        diasColEl.style.display = (dias > 0 || meses === 0) ? '' : 'none';
+        mesesNumEl.innerHTML = `${meses} <small>${meses === 1 ? 'mes' : 'meses'}</small>`;
+        mesesMontoEl.textContent = fmt(pagoMensual * meses);
+        diasNumEl.innerHTML = `${dias} <small>${dias === 1 ? 'día' : 'días'}</small>`;
+        diasMontoEl.textContent = fmt(pagoDiario * dias);
       }
 
       fraseEl.innerHTML = pagoDiario > 0 && diasMes > 0
