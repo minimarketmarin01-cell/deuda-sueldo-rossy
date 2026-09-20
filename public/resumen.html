@@ -45,6 +45,9 @@ section{margin-top:44px;}
 .hero .sub{font-size:16px;color:var(--muted);margin-top:8px;}
 .legend{display:flex;gap:22px;flex-wrap:wrap;margin:16px 0 6px;font-size:17px;font-weight:600;}
 .legend span{display:inline-flex;align-items:center;gap:8px;}
+.kv-row{margin-top:14px;}
+.kv-label{font-size:16px;font-weight:600;color:var(--ink-2);}
+.kv-value{font-size:23px;font-weight:800;color:var(--ink);margin-top:2px;}
 .swatch{width:16px;height:16px;border-radius:4px;flex:none;}
 .chart-wrap{overflow-x:auto;}
 .bar-row{display:flex;align-items:flex-end;gap:18px;margin-top:22px;min-width:560px;}
@@ -245,11 +248,13 @@ function render(state){
       <h2>Sueldo al día, deuda aparte</h2>
       <div class="card">
         <p style="margin:0 0 12px;">Desde <b>${meses[deudaVieja.continuousStart.getMonth()]} de ${deudaVieja.continuousStart.getFullYear()}</b> se le paga el sueldo completo cada mes, sin atrasos. Lo que queda es solo la deuda de antes:</p>
-        <div class="legend" style="margin:0;">
-          <span>Deuda de antes (hasta ${meses[(deudaVieja.continuousStart.getMonth()+11)%12]} ${deudaVieja.continuousStart.getMonth()===0 ? deudaVieja.continuousStart.getFullYear()-1 : deudaVieja.continuousStart.getFullYear()}): <b class="mono">${fmt(deudaVieja.deudaViejaOriginal)}</b></span>
+        <div class="kv-row" style="margin-top:0;">
+          <div class="kv-label">Deuda de antes (hasta ${meses[(deudaVieja.continuousStart.getMonth()+11)%12]} ${deudaVieja.continuousStart.getMonth()===0 ? deudaVieja.continuousStart.getFullYear()-1 : deudaVieja.continuousStart.getFullYear()}):</div>
+          <div class="kv-value mono">${fmt(deudaVieja.deudaViejaOriginal)}</div>
         </div>
-        <div class="legend" style="margin-top:8px;">
-          <span>Lo que queda por pagar hoy: <b class="mono">${fmt(Math.max(totalDeuda,0))}</b></span>
+        <div class="kv-row">
+          <div class="kv-label">Lo que queda por pagar hoy:</div>
+          <div class="kv-value mono">${fmt(Math.max(totalDeuda,0))}</div>
         </div>
       </div>
     </section>
