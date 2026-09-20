@@ -143,8 +143,80 @@ function computePorAnio(state){
   return { rows, cumRows, totalDeuda: acumDevengado - acumPagado, cutoff };
 }
 
+// Encuentra el ultimo mes con deficit propio (se pago menos de lo que
+// correspondia ese mes) y calcula la "deuda vieja" congelada justo antes
+// de que empezara a pagarse al dia de forma continua.
+function computeDeudaVieja(state){
+  const startVal = state.settings.fecha_inicio || '2023-05-01';
+  const start = new Date(startVal+'T00:00:00');
+  const cutoff = new Date();
+  const tramos = state.tramos;
+  const checkedIds = new Set(state.categories.filter(c=>c.checked).map(c=>c.id));
+
+  const abonadoPorMes = {};
+  state.payments.forEach(p=>{
+    if(!checkedIds.has(p.category_id)) return;
+    const key = p.fecha.slice(0,7);
+    abonadoPorMes[key] = (abonadoPorMes[key]||0) + p.monto;
+  });
+
+  let cursor = monthStart(start);
+  const cutoffMonth = monthStart(cutoff);
+  let acumDevengado = 0, acumAbonado = 0;
+  let lastDeficitCumDevengado = 0, lastDeficitCumAbonado = 0, lastDeficitKey = null;
+
+  while(cursor <= cutoffMonth){
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`;
+    const rate = rateForMonth(tramos, cursor);
+    const dim = daysInMonth(cursor);
+    const devengadoMes = (cursor.getTime() === cutoffMonth.getTime())
+      ? rate * (Math.min(cutoff.getDate(), dim) / dim)
+      : rate;
+    const abonadoMes = abonadoPorMes[key] || 0;
+
+    acumDevengado += devengadoMes;
+    acumAbonado += abonadoMes;
+
+    if(abonadoMes < devengadoMes - 1){ // -1 tolera redondeo
+      lastDeficitCumDevengado = acumDevengado;
+      lastDeficitCumAbonado = acumAbonado;
+      lastDeficitKey = key;
+    }
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+  }
+
+  if(lastDeficitKey === null){
+    return null; // nunca hubo un mes cubierto al 100%, no aplica la separacion
+  }
+  const [ly, lm] = lastDeficitKey.split('-').map(Number);
+  const continuousStart = new Date(ly, lm, 1); // mes siguiente al ultimo deficit
+  return {
+    continuousStart,
+    deudaViejaOriginal: lastDeficitCumDevengado - lastDeficitCumAbonado,
+  };
+}
+
+// Promedio de pagos "casi diarios" de $20.000 por mes, usando solo meses
+// completos (excluye el primer y el ultimo mes, que suelen venir parciales).
+const DIARIO_CATS = ['cuaderno_diario','cuaderno_cierres_abril_2026','app_gastos_sep2026'];
+function computeRitmoDiario(state){
+  const porMes = {};
+  state.payments.forEach(p=>{
+    if(!DIARIO_CATS.includes(p.category_id) || p.monto !== 20000) return;
+    const key = p.fecha.slice(0,7);
+    porMes[key] = (porMes[key]||0) + 1;
+  });
+  const keys = Object.keys(porMes).sort();
+  if(keys.length < 3) return keys.length ? porMes[keys[0]] : 20;
+  const meses = keys.slice(1, -1); // saca primero y ultimo (parciales)
+  const total = meses.reduce((a,k)=>a+porMes[k], 0);
+  return meses.length ? Math.round(total / meses.length) : 20;
+}
+
 function render(state){
   const { rows, cumRows, totalDeuda, cutoff } = computePorAnio(state);
+  const deudaVieja = computeDeudaVieja(state);
+  const ritmoDiario = computeRitmoDiario(state);
   const app = document.getElementById('app');
   const currentYear = cutoff.getFullYear();
   const startVal = state.settings.fecha_inicio || '2023-05-01';
@@ -177,6 +249,21 @@ function render(state){
           : 'Es la diferencia entre todo lo que correspondía pagarle desde ' + startLabel + ', y todo lo que efectivamente se le ha pagado.'}</div>
       </div>
     </section>
+
+    ${deudaVieja ? `
+    <section>
+      <h2>Sueldo al día, deuda aparte</h2>
+      <div class="card">
+        <p style="margin:0 0 12px;">Desde <b>${meses[deudaVieja.continuousStart.getMonth()]} de ${deudaVieja.continuousStart.getFullYear()}</b> se le paga el sueldo completo cada mes — ningún mes desde entonces quedó corto. Lo que queda es pura deuda de antes:</p>
+        <div class="legend" style="margin:0;">
+          <span>Deuda vieja (congelada a fin de ${meses[(deudaVieja.continuousStart.getMonth()+11)%12]} ${deudaVieja.continuousStart.getMonth()===0 ? deudaVieja.continuousStart.getFullYear()-1 : deudaVieja.continuousStart.getFullYear()}): <b class="mono">${fmt(deudaVieja.deudaViejaOriginal)}</b></span>
+        </div>
+        <div class="legend" style="margin-top:8px;">
+          <span>Ya bajó, con los excedentes pagados desde entonces, a: <b class="mono">${fmt(Math.max(totalDeuda,0))}</b></span>
+        </div>
+      </div>
+    </section>
+    ` : ''}
 
     <section>
       <h2>Año por año: lo que correspondía vs. lo que se pagó</h2>
@@ -246,9 +333,10 @@ function render(state){
     dc.appendChild(col);
   });
 
+  const extraRecomendado = 30000 * ritmoDiario;
   const tiers = [
     {tag:'Tranquila', extra:200000},
-    {tag:'Recomendada', extra:400000, reco:true},
+    {tag:'Recomendado', extra:extraRecomendado, reco:true, sub:`$30.000 × ~${ritmoDiario} pagos/mes (tu ritmo real)`},
     {tag:'Rápida', extra:700000},
   ];
   const pg = document.getElementById('plan-grid');
@@ -272,6 +360,7 @@ function render(state){
       <div class="months">${months} <small>meses</small></div>
       <div class="cuota">${durText}<br>Cuota mensual: <b class="mono">${fmt(cuota)}</b>
       ${months > 1 && !esExacto ? `<br><span style="font-size:13px;">Último mes: <b class="mono">${fmt(cuotaUltimoMes)}</b> (el abono baja a ${fmt(extraUltimoMes)}, ya no se debe más)</span>` : ''}
+      ${t.sub ? `<br><span style="font-size:12.5px;color:var(--muted);">${t.sub}</span>` : ''}
       </div>
     `;
     pg.appendChild(card);
