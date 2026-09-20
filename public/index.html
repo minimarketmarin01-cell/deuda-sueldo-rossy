@@ -225,6 +225,13 @@ function setStatus(el, msg, ok){
   if(ok) setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; }, 2500);
 }
 
+function getLastCategory(){
+  try{ return localStorage.getItem('lastCategoryId') || ''; }catch(e){ return ''; }
+}
+function setLastCategory(id){
+  try{ localStorage.setItem('lastCategoryId', id); }catch(e){}
+}
+
 function render(){
   const app = document.getElementById('app');
   const today = new Date().toISOString().slice(0,10);
@@ -310,7 +317,7 @@ function render(){
           <div class="field grow">
             <label for="add-cat">Grupo</label>
             <select id="add-cat">
-              ${STATE.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
+              ${STATE.categories.map(c=>`<option value="${c.id}" ${c.id===getLastCategory()?'selected':''}>${c.name}</option>`).join('')}
               <option value="__new__">+ Crear grupo nuevo…</option>
             </select>
           </div>
@@ -533,6 +540,7 @@ function wireEvents(){
     newCatField.hidden = !isNew;
     newCatName.required = isNew;
     if(isNew) newCatName.focus();
+    else setLastCategory(addCatSelect.value);
   });
 
   const submitBtn = document.getElementById('add-submit-btn');
@@ -566,6 +574,7 @@ function wireEvents(){
         if(!name){ setStatus(addStatus, 'Escribe el nombre del grupo nuevo', false); return; }
         const created = await api('/api/categories', {method:'POST', body: JSON.stringify({name})});
         category_id = created.id;
+        setLastCategory(category_id);
       }
       for(const fecha of fechas){
         await api('/api/payments', {method:'POST', body: JSON.stringify({fecha, category_id, monto, nota})});
