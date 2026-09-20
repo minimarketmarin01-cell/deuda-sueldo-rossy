@@ -59,8 +59,7 @@ section{margin-top:44px;}
 .debt-fill .val{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:15px;font-weight:800;white-space:nowrap;}
 .debt-year{font-size:17px;font-weight:800;margin-top:10px;}
 .note{font-size:16px;color:var(--muted);margin-top:14px;line-height:1.6;}
-.plan-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:20px;}
-@media (min-width:640px){.plan-grid{grid-template-columns:1fr 1fr 1fr;}}
+.plan-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:20px;max-width:420px;margin-left:auto;margin-right:auto;}
 .plan-card{background:var(--surface);border:2px solid var(--border);border-radius:16px;padding:22px 18px;text-align:center;box-shadow:var(--shadow);}
 .plan-card.reco{border-color:var(--blue);background:var(--blue-soft);}
 .plan-card .tag{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);}
@@ -215,8 +214,6 @@ function render(state){
   const startLabel = `${meses[parseInt(sm,10)-1]} de ${sy}`;
   const cutoffLabel = cutoff.toLocaleDateString('es-CL', {day:'2-digit', month:'long', year:'numeric'});
 
-  const sueldoActual = rateForMonth(state.tramos, monthStart(cutoff));
-
   app.innerHTML = `
     <a class="back" href="/">← Volver a la calculadora</a>
     <div class="eyebrow">Minimarket Marín 376</div>
@@ -276,10 +273,9 @@ function render(state){
     </section>
 
     <section>
-      <h2>Plan de pago sugerido</h2>
-      <p class="note" style="margin-top:4px;">Para que la deuda no siga creciendo, hay que pagar como mínimo el sueldo del mes en curso (${fmt(sueldoActual)}) más un abono extra. Estas son tres velocidades posibles para saldar ${fmt(totalDeuda)}:</p>
+      <h2>Plan de pago</h2>
+      <p class="note" style="margin-top:4px;">Esto es aparte del sueldo del mes, que se sigue pagando al día. Ingresa cuánto se le paga por día y cuántos días al mes, para ver el pago mensual y el tiempo aproximado para terminar de pagar los ${fmt(Math.max(totalDeuda,0))} de deuda.</p>
       <div class="plan-grid" id="plan-grid"></div>
-      <p class="note"><b>Ojo:</b> la cuota mensual es sueldo del mes (${fmt(sueldoActual)}) + abono a lo atrasado. Multiplicar la cuota por los meses NO da la deuda — da el total pagado a Rossy en ese período (sueldo + deuda juntos). Lo que sí paga la deuda es solo la parte del abono extra. Se puede empezar con la opción tranquila e ir subiendo el abono cuando el negocio lo permita.</p>
     </section>
 
     <footer>
@@ -323,68 +319,66 @@ function render(state){
     dc.appendChild(col);
   });
 
-  const tiers = [
-    {tag:'Tranquila', extra:200000},
-    {tag:'Rápida', extra:700000},
-  ];
   const pg = document.getElementById('plan-grid');
   const deudaPositiva = Math.max(totalDeuda, 0);
 
-  function buildTierCard(t){
-    const months = deudaPositiva === 0 ? 0 : Math.ceil(deudaPositiva / t.extra);
-    const years = Math.floor(months/12);
-    const restMonths = months % 12;
-    const cuota = sueldoActual + t.extra;
-    // el ultimo mes el abono extra es menor (lo que falta, no el monto completo)
-    const extraUltimoMes = months > 0 ? deudaPositiva - (months - 1) * t.extra : 0;
-    const cuotaUltimoMes = sueldoActual + extraUltimoMes;
-    const esExacto = extraUltimoMes === t.extra;
-    const durText = years > 0
-      ? `≈ ${years} año${years===1?'':'s'}${restMonths ? ' y '+restMonths+' mes'+(restMonths===1?'':'es') : ''}`
-      : `≈ ${months} mes${months===1?'':'es'}`;
+  // Tarjeta unica "Plan de pago": pago diario x dias al mes -> pago mensual y tiempo estimado.
+  function buildPlanCard(deudaTotal){
     const card = document.createElement('div');
     card.className = 'plan-card';
     card.innerHTML = `
-      <div class="tag">${t.tag}</div>
-      <div class="months">${months} <small>meses</small></div>
-      <div class="cuota">${durText}<br>Cuota mensual: <b class="mono">${fmt(cuota)}</b>
-      ${months > 1 && !esExacto ? `<br><span style="font-size:13px;">Último mes: <b class="mono">${fmt(cuotaUltimoMes)}</b> (el abono baja a ${fmt(extraUltimoMes)}, ya no se debe más)</span>` : ''}
-      </div>
-    `;
-    return card;
-  }
-
-  // Tarjeta "Recomendado": simulador editable dias x monto diario.
-  function buildSimCard(){
-    const card = document.createElement('div');
-    card.className = 'plan-card reco';
-    card.innerHTML = `
-      <div class="tag">Recomendado</div>
+      <div class="tag">Plan de pago</div>
       <div class="sim-grid">
         <div class="sim-field">
-          <label for="sim-dias">Días</label>
-          <input type="number" id="sim-dias" inputmode="numeric" min="1" value="30">
-        </div>
-        <div class="sim-field">
-          <label for="sim-monto">Monto diario</label>
+          <label for="plan-monto">Pago diario</label>
           <div class="amount-wrap">
             <span class="amount-prefix">$</span>
-            <input type="text" id="sim-monto" inputmode="numeric" value="30.000">
+            <input type="text" id="plan-monto" inputmode="numeric" value="30.000">
           </div>
         </div>
+        <div class="sim-field">
+          <label for="plan-dias">Días de pago al mes</label>
+          <input type="number" id="plan-dias" inputmode="numeric" min="1" max="31" value="30">
+        </div>
       </div>
-      <div class="sim-label">Deuda estimada</div>
-      <div class="months mono" id="sim-resultado" style="font-size:32px;">$0</div>
+      <div class="sim-label">Pago aproximado al mes</div>
+      <div class="months mono" id="plan-mensual">$0</div>
+      <div class="sim-label" style="margin-top:14px;">Terminaría de pagar en aproximadamente</div>
+      <div class="months mono" id="plan-tiempo" style="font-size:24px;">-</div>
+      <p class="cuota" id="plan-frase" style="margin-top:14px;"></p>
     `;
-    const diasInput = card.querySelector('#sim-dias');
-    const montoInput = card.querySelector('#sim-monto');
-    const resultadoEl = card.querySelector('#sim-resultado');
+    const montoInput = card.querySelector('#plan-monto');
+    const diasInput = card.querySelector('#plan-dias');
+    const mensualEl = card.querySelector('#plan-mensual');
+    const tiempoEl = card.querySelector('#plan-tiempo');
+    const fraseEl = card.querySelector('#plan-frase');
 
     function recompute(){
-      const dias = Number(diasInput.value) || 0;
-      const monto = Number(montoInput.value.replace(/\D/g,'')) || 0;
-      resultadoEl.textContent = fmt(dias * monto);
+      const pagoDiario = Number(montoInput.value.replace(/\D/g,'')) || 0;
+      const diasMes = Number(diasInput.value) || 0;
+      const pagoMensual = pagoDiario * diasMes;
+      mensualEl.textContent = fmt(pagoMensual);
+
+      if (deudaTotal <= 0){
+        tiempoEl.textContent = 'Ya está al día';
+      } else if (pagoDiario <= 0 || diasMes <= 0){
+        tiempoEl.textContent = '-';
+      } else {
+        const diasTotales = deudaTotal / pagoDiario;
+        let meses = Math.floor(diasTotales / diasMes);
+        let dias = Math.round(diasTotales - meses * diasMes);
+        if (dias >= diasMes){ meses += 1; dias = 0; }
+        const partes = [];
+        if (meses > 0) partes.push(meses + (meses === 1 ? ' mes' : ' meses'));
+        if (dias > 0 || meses === 0) partes.push(dias + (dias === 1 ? ' día' : ' días'));
+        tiempoEl.textContent = partes.join(' y ');
+      }
+
+      fraseEl.innerHTML = pagoDiario > 0 && diasMes > 0
+        ? `Pagando <b class="mono">${fmt(pagoDiario)}</b> diarios durante ${diasMes} días al mes, pagaría aproximadamente <b class="mono">${fmt(pagoMensual)}</b> al mes.`
+        : '';
     }
+
     montoInput.addEventListener('input', ()=>{
       const digits = montoInput.value.replace(/\D/g,'');
       montoInput.value = digits ? Number(digits).toLocaleString('es-CL') : '';
@@ -395,9 +389,7 @@ function render(state){
     return card;
   }
 
-  pg.appendChild(buildTierCard(tiers[0]));
-  pg.appendChild(buildSimCard());
-  pg.appendChild(buildTierCard(tiers[1]));
+  pg.appendChild(buildPlanCard(deudaPositiva));
 }
 
 (async function init(){
