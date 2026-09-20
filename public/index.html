@@ -95,6 +95,11 @@ footer a{color:var(--accent-strong);}
 .add-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
 .add-form .field{min-width:130px;}
 .add-form .field.grow{flex:1 1 180px;}
+.fecha-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+.fecha-row .fecha-input{flex:1;}
+.fecha-row .rm-fecha{background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;width:28px;height:28px;flex:none;cursor:pointer;font-size:15px;line-height:1;}
+.fecha-row .rm-fecha:hover{border-color:var(--debt);color:var(--debt);}
+.link-btn{background:none;border:none;color:var(--accent-strong);font-size:12.5px;font-weight:600;cursor:pointer;padding:2px 0;text-align:left;}
 button.primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-family:'Public Sans',sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;}
 button.primary:hover{background:var(--accent-strong);}
 .status-msg{font-size:12.5px;margin-top:8px;min-height:16px;}
@@ -271,9 +276,12 @@ function render(){
       <div class="panel">
         <h3 style="font-size:14px;margin-bottom:10px;">Agregar abono nuevo</h3>
         <form class="add-form" id="add-form">
-          <div class="field">
-            <label for="add-fecha">Fecha</label>
-            <input type="date" id="add-fecha" required>
+          <div class="field grow" id="fecha-field">
+            <label>Fecha(s)</label>
+            <div id="fecha-list">
+              <div class="fecha-row"><input type="date" class="fecha-input" required></div>
+            </div>
+            <button type="button" id="add-fecha-btn" class="link-btn">+ Agregar otra fecha</button>
           </div>
           <div class="field grow">
             <label for="add-cat">Grupo</label>
@@ -420,6 +428,34 @@ function wireEvents(){
   const addCatSelect = document.getElementById('add-cat');
   const newCatField = document.getElementById('new-cat-field');
   const newCatName = document.getElementById('new-cat-name');
+  const fechaList = document.getElementById('fecha-list');
+  const addFechaBtn = document.getElementById('add-fecha-btn');
+
+  function renumberFechaRows(){
+    const rows = fechaList.querySelectorAll('.fecha-row');
+    rows.forEach(row=>{
+      let rm = row.querySelector('.rm-fecha');
+      if(rows.length > 1 && !rm){
+        rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'rm-fecha';
+        rm.textContent = '×';
+        rm.addEventListener('click', ()=>{ row.remove(); renumberFechaRows(); });
+        row.appendChild(rm);
+      } else if(rows.length <= 1 && rm){
+        rm.remove();
+      }
+    });
+  }
+
+  addFechaBtn.addEventListener('click', ()=>{
+    const row = document.createElement('div');
+    row.className = 'fecha-row';
+    row.innerHTML = `<input type="date" class="fecha-input" required>`;
+    fechaList.appendChild(row);
+    renumberFechaRows();
+    row.querySelector('input').focus();
+  });
 
   addCatSelect.addEventListener('change', ()=>{
     const isNew = addCatSelect.value === '__new__';
@@ -430,10 +466,11 @@ function wireEvents(){
 
   addForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
-    const fecha = document.getElementById('add-fecha').value;
+    const fechas = Array.from(fechaList.querySelectorAll('.fecha-input')).map(i=>i.value).filter(Boolean);
     let category_id = addCatSelect.value;
     const monto = Number(document.getElementById('add-monto').value);
     const nota = document.getElementById('add-nota').value.trim();
+    if(fechas.length === 0){ setStatus(addStatus, 'Pon al menos una fecha', false); return; }
     try{
       if(category_id === '__new__'){
         const name = newCatName.value.trim();
@@ -441,8 +478,10 @@ function wireEvents(){
         const created = await api('/api/categories', {method:'POST', body: JSON.stringify({name})});
         category_id = created.id;
       }
-      await api('/api/payments', {method:'POST', body: JSON.stringify({fecha, category_id, monto, nota})});
-      setStatus(addStatus, 'Abono agregado', true);
+      for(const fecha of fechas){
+        await api('/api/payments', {method:'POST', body: JSON.stringify({fecha, category_id, monto, nota})});
+      }
+      setStatus(addStatus, fechas.length === 1 ? 'Abono agregado' : fechas.length + ' abonos agregados', true);
       await loadState();
       render();
     }catch(err){
