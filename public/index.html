@@ -95,11 +95,25 @@ footer a{color:var(--accent-strong);}
 .add-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
 .add-form .field{min-width:130px;}
 .add-form .field.grow{flex:1 1 180px;}
-.fecha-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
-.fecha-row .fecha-input{flex:1;}
-.fecha-row .rm-fecha{background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;width:28px;height:28px;flex:none;cursor:pointer;font-size:15px;line-height:1;}
-.fecha-row .rm-fecha:hover{border-color:var(--debt);color:var(--debt);}
 .link-btn{background:none;border:none;color:var(--accent-strong);font-size:12.5px;font-weight:600;cursor:pointer;padding:2px 0;text-align:left;}
+.add-form .field.full{flex-basis:100%;}
+.cal-panel{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;max-width:320px;}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.cal-nav .link-btn{font-size:16px;padding:2px 10px;}
+.cal-label{font-size:13px;font-weight:600;text-transform:capitalize;}
+.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;}
+.cal-dow span{font-size:10.5px;text-align:center;color:var(--text-muted);font-weight:600;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.cal-day{aspect-ratio:1;border:none;background:none;border-radius:7px;font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--text);cursor:pointer;}
+.cal-day:hover{background:var(--surface-2);}
+.cal-day.sel{background:var(--accent);color:#fff;font-weight:700;}
+.cal-day.empty{visibility:hidden;cursor:default;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);color:var(--accent-strong);border-radius:999px;padding:4px 6px 4px 10px;font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace;}
+.chip button{background:none;border:none;color:var(--accent-strong);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;}
+.amount-wrap{position:relative;}
+.amount-wrap .amount-prefix{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:14px;}
+.amount-wrap input{padding-left:20px;text-align:right;width:100%;}
 button.primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-family:'Public Sans',sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;}
 button.primary:hover{background:var(--accent-strong);}
 .status-msg{font-size:12.5px;margin-top:8px;min-height:16px;}
@@ -276,12 +290,18 @@ function render(){
       <div class="panel">
         <h3 style="font-size:14px;margin-bottom:10px;">Agregar abono nuevo</h3>
         <form class="add-form" id="add-form">
-          <div class="field grow" id="fecha-field">
-            <label>Fecha(s)</label>
-            <div id="fecha-list">
-              <div class="fecha-row"><input type="date" class="fecha-input" required></div>
+          <div class="field grow full" id="fecha-field">
+            <label>Fecha(s) — toca los días</label>
+            <div class="cal-panel">
+              <div class="cal-nav">
+                <button type="button" id="cal-prev" class="link-btn">‹</button>
+                <span id="cal-label" class="cal-label"></span>
+                <button type="button" id="cal-next" class="link-btn">›</button>
+              </div>
+              <div class="cal-dow" id="cal-dow"></div>
+              <div class="cal-grid" id="cal-grid"></div>
             </div>
-            <button type="button" id="add-fecha-btn" class="link-btn">+ Agregar otra fecha</button>
+            <div class="chips" id="fecha-chips"></div>
           </div>
           <div class="field grow">
             <label for="add-cat">Grupo</label>
@@ -296,7 +316,10 @@ function render(){
           </div>
           <div class="field">
             <label for="add-monto">Monto</label>
-            <input type="number" id="add-monto" min="1" step="1" required>
+            <div class="amount-wrap">
+              <span class="amount-prefix">$</span>
+              <input type="text" inputmode="numeric" id="add-monto" placeholder="0" required>
+            </div>
           </div>
           <div class="field grow">
             <label for="add-nota">Nota (opcional)</label>
@@ -428,33 +451,77 @@ function wireEvents(){
   const addCatSelect = document.getElementById('add-cat');
   const newCatField = document.getElementById('new-cat-field');
   const newCatName = document.getElementById('new-cat-name');
-  const fechaList = document.getElementById('fecha-list');
-  const addFechaBtn = document.getElementById('add-fecha-btn');
 
-  function renumberFechaRows(){
-    const rows = fechaList.querySelectorAll('.fecha-row');
-    rows.forEach(row=>{
-      let rm = row.querySelector('.rm-fecha');
-      if(rows.length > 1 && !rm){
-        rm = document.createElement('button');
-        rm.type = 'button';
-        rm.className = 'rm-fecha';
-        rm.textContent = '×';
-        rm.addEventListener('click', ()=>{ row.remove(); renumberFechaRows(); });
-        row.appendChild(rm);
-      } else if(rows.length <= 1 && rm){
-        rm.remove();
-      }
+  // --- Calendario de seleccion multiple ---
+  const calGrid = document.getElementById('cal-grid');
+  const calDow = document.getElementById('cal-dow');
+  const calLabel = document.getElementById('cal-label');
+  const calPrev = document.getElementById('cal-prev');
+  const calNext = document.getElementById('cal-next');
+  const chipsEl = document.getElementById('fecha-chips');
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const DOW = ['L','M','M','J','V','S','D'];
+  const today0 = new Date();
+  let calYear = today0.getFullYear();
+  let calMonth = today0.getMonth();
+  const selectedDates = new Set();
+
+  function iso(y,m,d){ return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+  function renderCalendar(){
+    calLabel.textContent = `${MESES[calMonth]} ${calYear}`;
+    calDow.innerHTML = DOW.map(d=>`<span>${d}</span>`).join('');
+    const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // lunes=0
+    const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+    let html = '';
+    for(let i=0;i<firstDow;i++) html += `<button type="button" class="cal-day empty" tabindex="-1"></button>`;
+    for(let d=1; d<=daysInMonth; d++){
+      const dateStr = iso(calYear, calMonth, d);
+      const sel = selectedDates.has(dateStr) ? ' sel' : '';
+      html += `<button type="button" class="cal-day${sel}" data-date="${dateStr}">${d}</button>`;
+    }
+    calGrid.innerHTML = html;
+    calGrid.querySelectorAll('.cal-day:not(.empty)').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const d = btn.dataset.date;
+        if(selectedDates.has(d)) selectedDates.delete(d); else selectedDates.add(d);
+        renderCalendar();
+        renderChips();
+      });
     });
   }
 
-  addFechaBtn.addEventListener('click', ()=>{
-    const row = document.createElement('div');
-    row.className = 'fecha-row';
-    row.innerHTML = `<input type="date" class="fecha-input" required>`;
-    fechaList.appendChild(row);
-    renumberFechaRows();
-    row.querySelector('input').focus();
+  function renderChips(){
+    const sorted = Array.from(selectedDates).sort();
+    chipsEl.innerHTML = sorted.map(d=>{
+      const [y,m,day] = d.split('-');
+      return `<span class="chip">${day}/${m}<button type="button" data-date="${d}">×</button></span>`;
+    }).join('');
+    chipsEl.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        selectedDates.delete(btn.dataset.date);
+        renderCalendar();
+        renderChips();
+      });
+    });
+  }
+
+  calPrev.addEventListener('click', ()=>{
+    calMonth--; if(calMonth < 0){ calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  calNext.addEventListener('click', ()=>{
+    calMonth++; if(calMonth > 11){ calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+  renderCalendar();
+  renderChips();
+
+  // --- Monto formateado en pesos chilenos ---
+  const montoInput = document.getElementById('add-monto');
+  montoInput.addEventListener('input', ()=>{
+    const digits = montoInput.value.replace(/\D/g,'');
+    montoInput.value = digits ? Number(digits).toLocaleString('es-CL') : '';
   });
 
   addCatSelect.addEventListener('change', ()=>{
@@ -466,11 +533,12 @@ function wireEvents(){
 
   addForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
-    const fechas = Array.from(fechaList.querySelectorAll('.fecha-input')).map(i=>i.value).filter(Boolean);
+    const fechas = Array.from(selectedDates).sort();
     let category_id = addCatSelect.value;
-    const monto = Number(document.getElementById('add-monto').value);
+    const monto = Number(montoInput.value.replace(/\D/g,''));
     const nota = document.getElementById('add-nota').value.trim();
-    if(fechas.length === 0){ setStatus(addStatus, 'Pon al menos una fecha', false); return; }
+    if(fechas.length === 0){ setStatus(addStatus, 'Toca al menos un dia en el calendario', false); return; }
+    if(!monto){ setStatus(addStatus, 'Pon un monto', false); return; }
     try{
       if(category_id === '__new__'){
         const name = newCatName.value.trim();
@@ -482,6 +550,10 @@ function wireEvents(){
         await api('/api/payments', {method:'POST', body: JSON.stringify({fecha, category_id, monto, nota})});
       }
       setStatus(addStatus, fechas.length === 1 ? 'Abono agregado' : fechas.length + ' abonos agregados', true);
+      selectedDates.clear();
+      renderCalendar();
+      renderChips();
+      montoInput.value = '';
       await loadState();
       render();
     }catch(err){
