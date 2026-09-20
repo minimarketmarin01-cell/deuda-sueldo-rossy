@@ -9,6 +9,16 @@ const notFound = () => json({ error: "No encontrado" }, { status: 404 });
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+function slugify(name) {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40) || "grupo";
+}
+
 async function getState(db) {
   const [settingsRes, tramosRes, categoriesRes, paymentsRes] = await Promise.all([
     db.prepare("SELECT key, value FROM settings").all(),
@@ -87,6 +97,29 @@ export default {
         const res = await db.prepare("UPDATE categories SET checked = ?1 WHERE id = ?2").bind(checked, id).run();
         if (res.meta.changes === 0) return notFound();
         return json({ ok: true });
+      }
+
+      // POST /api/categories  { name, description }
+      if (pathname === "/api/categories" && request.method === "POST") {
+        const body = await request.json();
+        const name = (body.name || "").trim();
+        if (!name) return badRequest("nombre requerido");
+
+        let id = slugify(name);
+        const exists = await db.prepare("SELECT id FROM categories WHERE id = ?1").bind(id).first();
+        if (exists) id = id + "_" + Date.now().toString(36);
+
+        const maxOrder = await db.prepare("SELECT COALESCE(MAX(sort_order), 0) AS m FROM categories").first();
+        const sortOrder = (maxOrder ? maxOrder.m : 0) + 1;
+
+        await db
+          .prepare(
+            "INSERT INTO categories (id, name, status, checked, description, sort_order) VALUES (?1, ?2, 'confirmado', 1, ?3, ?4)"
+          )
+          .bind(id, name, body.description || "Grupo agregado desde la app.", sortOrder)
+          .run();
+
+        return json({ ok: true, id, name }, { status: 201 });
       }
 
       // POST /api/payments  { category_id, fecha, monto, nota }

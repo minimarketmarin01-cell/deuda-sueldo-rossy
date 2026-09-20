@@ -279,7 +279,12 @@ function render(){
             <label for="add-cat">Grupo</label>
             <select id="add-cat">
               ${STATE.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
+              <option value="__new__">+ Crear grupo nuevo…</option>
             </select>
+          </div>
+          <div class="field grow" id="new-cat-field" hidden>
+            <label for="new-cat-name">Nombre del grupo nuevo</label>
+            <input type="text" id="new-cat-name" placeholder="ej: App de gastos - octubre 2026">
           </div>
           <div class="field">
             <label for="add-monto">Monto</label>
@@ -412,13 +417,30 @@ function wireEvents(){
 
   const addForm = document.getElementById('add-form');
   const addStatus = document.getElementById('add-status');
+  const addCatSelect = document.getElementById('add-cat');
+  const newCatField = document.getElementById('new-cat-field');
+  const newCatName = document.getElementById('new-cat-name');
+
+  addCatSelect.addEventListener('change', ()=>{
+    const isNew = addCatSelect.value === '__new__';
+    newCatField.hidden = !isNew;
+    newCatName.required = isNew;
+    if(isNew) newCatName.focus();
+  });
+
   addForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const fecha = document.getElementById('add-fecha').value;
-    const category_id = document.getElementById('add-cat').value;
+    let category_id = addCatSelect.value;
     const monto = Number(document.getElementById('add-monto').value);
     const nota = document.getElementById('add-nota').value.trim();
     try{
+      if(category_id === '__new__'){
+        const name = newCatName.value.trim();
+        if(!name){ setStatus(addStatus, 'Escribe el nombre del grupo nuevo', false); return; }
+        const created = await api('/api/categories', {method:'POST', body: JSON.stringify({name})});
+        category_id = created.id;
+      }
       await api('/api/payments', {method:'POST', body: JSON.stringify({fecha, category_id, monto, nota})});
       setStatus(addStatus, 'Abono agregado', true);
       await loadState();
