@@ -353,6 +353,7 @@ function render(){
     </section>
 
     <footer>
+      <p id="sb-respaldo">Respaldo en Supabase: revisando…</p>
       <p><strong>Fuentes del ingreso minimo legal:</strong></p>
       <ul>
         <li><a href="https://www.mintrab.gob.cl/reajuste-al-ingreso-minimo-mensual/" target="_blank" rel="noopener">Mintrab — Reajuste al ingreso minimo mensual</a></li>
@@ -366,6 +367,22 @@ function render(){
   renderCategories();
   recalcStats();
   wireEvents();
+  revisarRespaldo();
+}
+
+// Respaldo en Supabase: compara la base principal (Cloudflare) con su copia (cantidad de filas y suma de abonos).
+async function revisarRespaldo(){
+  const el = document.getElementById('sb-respaldo');
+  if(!el) return;
+  try{
+    const r = await api('/api/espejo_comparar');
+    const malas = r.tablas.filter(t => !t.coincide).map(t => t.tabla + ' (' + t.d1 + ' / ' + t.supabase + ')')
+      .concat(r.control.filter(c => !c.coincide).map(c => c.nombre));
+    el.textContent = r.todoCoincide ? 'Respaldo en Supabase: ✅ coincide con Cloudflare'
+      : 'Respaldo en Supabase: ⚠️ hay diferencias — ' + malas.join(', ');
+  }catch(err){
+    el.textContent = 'Respaldo en Supabase: no se pudo revisar (' + err.message + ')';
+  }
 }
 
 function renderCategories(){

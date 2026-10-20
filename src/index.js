@@ -1,3 +1,6 @@
+import { conEspejo } from "./pg/espejo.js";
+import { compararRossy } from "./pg/comparar.js";
+
 const json = (data, init) =>
   new Response(JSON.stringify(data), {
     ...init,
@@ -50,16 +53,23 @@ async function getState(db) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
-    const db = env.DB;
+    // Cada escritura que D1 acepta se repite en Supabase (esquema deuda_rossy) en segundo plano, con los mismos ids.
+    // Sin los secretos SUPABASE_URL / SUPABASE_SERVICE_KEY queda la D1 tal cual.
+    const db = conEspejo(env, ctx, { rpc: "ejecutar_sql_espejo_rossy", tablasConId: new Set(["payments"]) }).DB;
 
     if (!pathname.startsWith("/api/")) {
       return env.ASSETS.fetch(request);
     }
 
     try {
+      // GET /api/espejo_comparar  -> ¿la copia en Supabase coincide con D1?
+      if (pathname === "/api/espejo_comparar" && request.method === "GET") {
+        return json(await compararRossy(env));
+      }
+
       // GET /api/state
       if (pathname === "/api/state" && request.method === "GET") {
         return json(await getState(db));
